@@ -12,11 +12,24 @@ public class LoadBalancer {
         while (true) {
             Socket socket = serverSocket.accept();
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            BufferedWriter out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+
             String message = in.readLine();
 
             if (message != null && message.equals("REGISTER")) {
                 servers.add(socket);
                 System.out.println("Registered server: " + socket);
+            }
+             else if (message != null && message.equals("CLIENT")) {
+                if (!servers.isEmpty()) {
+                    Socket target = servers.get(0); 
+                    out.write("SERVER_PORT " + target.getPort() + "\n");
+                    out.flush();
+                    System.out.println("Forwarded client to server on port: " + target.getPort());
+                } else {
+                    out.write("NO_SERVER_AVAILABLE\n");
+                    out.flush();
+                }
             }
         }
     }
