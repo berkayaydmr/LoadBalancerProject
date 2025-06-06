@@ -3,7 +3,7 @@ import java.net.*;
 
 public class Client {
     public static void main(String[] args) throws IOException {
-        Socket lbSocket = new Socket("localhost", 9000);
+        Socket lbSocket = new Socket("localhost", 9001);
         BufferedWriter out = new BufferedWriter(new OutputStreamWriter(lbSocket.getOutputStream()));
         BufferedReader in = new BufferedReader(new InputStreamReader(lbSocket.getInputStream()));
 

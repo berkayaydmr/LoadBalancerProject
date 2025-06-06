@@ -3,13 +3,35 @@ import java.net.*;
 
 public class Server {
     public static void main(String[] args) throws IOException {
-        ServerSocket serverSocket = new ServerSocket(7000); // sabit port
-        System.out.println("Server running on port 7000");
+        int port = args.length > 0 ? Integer.parseInt(args[0]) : 7001;
+        ServerSocket serverSocket = new ServerSocket(port);
+        System.out.println("Server running on port " + port);
 
-        Socket lb = new Socket("localhost", 9000);
-        BufferedWriter lbOut = new BufferedWriter(new OutputStreamWriter(lb.getOutputStream()));
-        lbOut.write("REGISTER\n");
-        lbOut.flush();
+        // Connect to load balancer with retry logic
+        Socket lb = null;
+        BufferedWriter lbOut = null;
+        
+        for (int attempt = 0; attempt < 5; attempt++) {
+            try {
+                lb = new Socket("localhost", 9001);
+                lbOut = new BufferedWriter(new OutputStreamWriter(lb.getOutputStream()));
+                lbOut.write("REGISTER " + port + "\n");
+                lbOut.flush();
+                System.out.println("Successfully registered with load balancer");
+                break;
+            } catch (IOException e) {
+                System.out.println("Failed to connect to load balancer, attempt " + (attempt + 1));
+                if (attempt < 4) {
+                    try { Thread.sleep(2000); } catch (InterruptedException ie) {}
+                } else {
+                    System.out.println("Could not connect to load balancer after 5 attempts");
+                    System.exit(1);
+                }
+            }
+        }
+
+        final BufferedWriter finalLbOut = lbOut;
+        final Socket finalLb = lb;
 
         // Load balancer'a yük bilgisi gönder
         new Thread(() -> {
@@ -17,11 +39,12 @@ public class Server {
                 while (true) {
                     Thread.sleep(5000);
                     int fakeLoad = (int)(Math.random() * 100);
-                    lbOut.write("load=" + fakeLoad + "\n");
-                    lbOut.flush();
+                    finalLbOut.write("load=" + fakeLoad + "\n");
+                    finalLbOut.flush();
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                System.out.println("Lost connection to load balancer: " + e.getMessage());
+                try { finalLb.close(); } catch (IOException ie) {}
             }
         }).start();
 
